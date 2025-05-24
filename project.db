@@ -1,0 +1,25 @@
+CREATE DATABASE graduation_portal;
+USE graduation_portal;
+
+CREATE TABLE students (
+  student_id VARCHAR(50) PRIMARY KEY,
+  first_name VARCHAR(100),
+  last_name VARCHAR(100),
+  course_name VARCHAR(100),
+  email VARCHAR(100),
+  mid_name VARCHAR(100),
+  faculty VARCHAR(100),
+  gender VARCHAR(100),
+  attending VARCHAR(50),
+  guest_count INT,
+  food_pref VARCHAR(100),
+  date_time DATETIME
+);
+
+ALTER TABLE students
+ADD COLUMN password VARCHAR(100);
+
+DESCRIBE students;
+
+
+
