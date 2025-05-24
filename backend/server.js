@@ -2,6 +2,10 @@
 const express = require('express');
 const pool = require('./db');
 
+pool.query('SELECT 1')
+  .then(() => console.log('✅ MySQL connected successfully!'))
+  .catch(err => console.error('❌ MySQL connection failed:', err));
+
 const app = express();
 const PORT = 3000;
 
@@ -70,15 +74,30 @@ app.post('/submit', async (req, res) => {
 
 
 app.post('/login', async (req, res) => {
-  const { student_id, password } = req.body; // получаем логин и код
+  const { student_id, password } = req.body;
 
-  // Временная проверка: админ
+  // 👉 Временная проверка для админа
   if (student_id === 'admin' && password === 'admin123') {
-    return res.json({ role: 'admin', message: 'Admin logged in' });
+    return res.json({ role: 'admin', message: 'Admin logged in successfully' });
   }
 
-  // Здесь позже будет SELECT из базы
-  res.status(401).json({ error: 'Invalid credentials' });
+  // 👉 Поиск студента в базе
+  try {
+    const [rows] = await pool.query(
+      'SELECT * FROM students WHERE student_id = ? AND password = ?',
+      [student_id, password]
+    );
+
+    if (rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid student ID or password' });
+    }
+
+    res.json({ role: 'student', student: rows[0], message: 'Student logged in successfully' });
+
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Server error during login' });
+  }
 });
 
 
@@ -157,7 +176,8 @@ app.post('/import-students', async (req, res) => {
              ON DUPLICATE KEY UPDATE
                full_name = VALUES(full_name),
                email = VALUES(email),
-               faculty = VALUES(faculty)`,
+               faculty = VALUES(faculty),
+               password = IF(password IS NULL OR password = '', VALUES(password), password)`,
             [
               student.student_id,
               student.full_name,
