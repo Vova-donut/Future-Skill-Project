@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 // ✅ Graduation Portal System Backend
 const xlsx = require('xlsx');
 const mysql = require('mysql2/promise');
@@ -201,3 +202,35 @@ app.listen(PORT, () => {
   console.log(`✅ Server is running at http://localhost:${PORT}`);
 });
 >>>>>>> d3f0cec4fdc70a3012e82302cdb905334d1ab7b6
+=======
+// app.js
+const express = require('express');
+const path = require('path');
+const bodyParser = require('body-parser');
+const app = express();
+const PORT = 3000;
+
+// Middleware
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Set view engine (optional if using EJS)
+// app.set('view engine', 'ejs');
+
+// Routes
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.post('/submit', (req, res) => {
+  const formData = req.body;
+  console.log('Form submitted:', formData);
+  res.send('Form submitted successfully');
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`Node app running on http://localhost:${PORT}`);
+});
+
+>>>>>>> d794c9b4f43dcf9d6aff6c0b7c310b56d7c796bd
