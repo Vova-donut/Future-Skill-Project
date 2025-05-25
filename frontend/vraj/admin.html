@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Panel - Future Skills</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="p-5 bg-light">
+
+  <div class="container bg-white p-4 rounded shadow">
+    <h2 class="mb-4 text-center text-primary">🎓 Admin Panel</h2>
+
+    <!-- Upload Excel -->
+    <div class="mb-4">
+      <label for="excelFile" class="form-label">Upload New Student List (Excel):</label>
+      <input class="form-control" type="file" id="excelFile" accept=".xlsx, .xls">
+      <button class="btn btn-success mt-2" onclick="uploadExcel()">📤 Upload</button>
+    </div>
+
+    <!-- Send Emails -->
+    <div class="mb-4">
+      <button class="btn btn-warning mt-3" onclick="sendEmails()">📧 Send Emails to Students</button>
+    </div>
+
+    <!-- Export CSV -->
+    <div class="mb-4">
+      <button class="btn btn-primary" onclick="downloadCSV()">📥 Export All Responses</button>
+    </div>
+
+    <!-- Table of Responses -->
+    <h5 class="text-secondary">Submitted Responses:</h5>
+    <div class="table-responsive">
+      <table class="table table-bordered table-striped mt-3" id="responseTable">
+        <thead class="table-dark">
+          <tr>
+            <th>Student ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Faculty</th>
+            <th>Attending</th>
+            <th>Guests</th>
+            <th>Food</th>
+            <th>Submitted At</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // 📥 Upload Excel file
+    async function uploadExcel() {
+      const fileInput = document.getElementById('excelFile');
+      const file = fileInput.files[0];
+      if (!file) return alert('Please select a file.');
+
+      const formData = new FormData();
+      formData.append('excel', file);
+
+      try {
+        const res = await fetch('/import-students', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await res.json();
+        if (res.ok) {
+          alert('✅ File uploaded successfully');
+          loadResponses();
+        } else {
+          alert('❌ Upload failed: ' + (result.error || 'Unknown error'));
+        }
+      } catch (err) {
+        alert('🚨 Server error during upload.');
+        console.error(err);
+      }
+    }
+
+    // 📤 Download all responses as CSV
+    function downloadCSV() {
+      window.location.href = '/export';
+    }
+
+    // 👀 Load responses and show in table
+    async function loadResponses() {
+      try {
+        const res = await fetch('/responses');
+        const data = await res.json();
+        const tbody = document.querySelector('#responseTable tbody');
+        tbody.innerHTML = '';
+
+        data.forEach(row => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${row.student_id}</td>
+            <td>${row.full_name}</td>
+            <td>${row.email}</td>
+            <td>${row.faculty}</td>
+            <td>${row.attending}</td>
+            <td>${row.guests}</td>
+            <td>${row.food_preference}</td>
+            <td>${new Date(row.submission_time).toLocaleString()}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error('Failed to load responses:', err);
+        alert('❌ Failed to fetch responses.');
+      }
+    }
+
+    // 🟢 Load data on page load
+    document.addEventListener('DOMContentLoaded', loadResponses);
+  </script>
+
+  <script>
+    // Send emails
+    async function sendEmails() {
+      try {
+        const res = await fetch('/send-emails', {
+          method: 'POST'
+        });
+
+        const result = await res.json();
+        if (res.ok) {
+          alert('✅ Emails sent successfully!');
+        } else {
+          alert('❌ Failed: ' + result.error);
+        }
+      } catch (err) {
+        alert('🚨 Server error during email sending');
+        console.error(err);
+      }
+    }
+  </script>
+
+</body>
+
+</html>
