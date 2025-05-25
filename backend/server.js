@@ -37,7 +37,6 @@ app.get('/responses', async (req, res) => {
   }
 });
 
-
 // Endpoint для приёма формы
 app.post('/submit', async (req, res) => {
   try {
@@ -104,6 +103,9 @@ app.post('/login', async (req, res) => {
 const { Parser } = require('json2csv');
 const fs = require('fs');
 const path = require('path');
+
+// Показываем все файлы из папки frontend
+app.use(express.static(path.join(__dirname, '../frontend')));
 
 // Export all form responses as CSV
 app.get('/export', async (req, res) => {
@@ -194,6 +196,19 @@ app.post('/import-students', async (req, res) => {
   } catch (err) {
     console.error('Error importing students:', err);
     res.status(500).json({ error: 'Server error during import' });
+  }
+});
+
+const sendEmails = require('./email/sendEmails');
+
+// POST /send-emails
+app.post('/send-emails', async (req, res) => {
+  try {
+    await sendEmails(); // функция уже есть
+    res.json({ message: 'Emails sent successfully' });
+  } catch (err) {
+    console.error('Error sending emails:', err);
+    res.status(500).json({ error: 'Failed to send emails' });
   }
 });
 
