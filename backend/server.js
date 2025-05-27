@@ -9,6 +9,9 @@ pool.query('SELECT 1')
 const app = express();
 const PORT = 3000;
 
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' });
+
 // Чтобы Express умел читать JSON из тела запроса
 app.use(express.json());
 
@@ -150,29 +153,41 @@ app.get('/export', async (req, res) => {
 });
 
 
-const csv = require('csv-parser'); // читаем CSV-файл
-const generatePassword = (length = 6) => {
-  // Генерация случайного пароля
-  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-};
+app.post('/import-students', upload.single('file'), async (req, res) => {
+  const filePath = req.file.path; // 🧭 путь к загруженному файлу
+  const results = [];
+  const fs = require('fs');
+  const csv = require('csv-parser'); // читаем CSV-файл
 
-app.post('/import-students', async (req, res) => {
-  const results = []; // Массив всех студентов из CSV
-  const filePath = path.join(__dirname, 'import', 'students.csv'); // Путь к файлу
+  const generatePassword = (length = 6) => {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  };
 
   try {
-    fs.createReadStream(filePath) // Читаем файл
-      .pipe(csv())
-      .on('data', row => {
-        const password = generatePassword(); // Создаём пароль
-        console.log(`Generated for ${row.student_id}: ${password}`); // Показываем в консоли
-        results.push({ ...row, password }); // Добавляем в массив
+    fs.createReadStream(filePath)
+      .pipe(csv({
+        mapHeaders: ({ header }) => header.trim().replace(/^\uFEFF/, ''),
+      }))
+      .on('data', (row) => {
+        const sid = String(row.student_id).replace(/[^\d]/g, '').trim();
+
+        if (!sid) {
+          console.warn('⚠️ Пропущена строка с неправильным student_id:', row);
+          return; // пропускаем строку
+        }
+
+        const password = generatePassword();
+
+        results.push({
+          ...row,
+          student_id: sid, // очищенный student_id
+          password
+        });
       })
       .on('end', async () => {
         for (const student of results) {
           await pool.query(
-            // Добавляем нового студента или обновляем данные
             `INSERT INTO students (student_id, full_name, email, faculty, password)
              VALUES (?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE
@@ -185,16 +200,21 @@ app.post('/import-students', async (req, res) => {
               student.full_name,
               student.email,
               student.faculty,
-              student.password // ВНИМАНИЕ: используется ТОЛЬКО при первом добавлении
+              student.password
             ]
           );
         }
 
-        // Отдаём обратно список студентов с паролями (для логов/рассылки)
-        res.json({ message: 'Imported students (passwords only for new ones)', students: results });
+        // 🧹 Удалим временный файл после импорта
+        fs.unlinkSync(filePath);
+
+        res.json({
+          message: '✅ Students imported successfully',
+          importedCount: results.length
+        });
       });
   } catch (err) {
-    console.error('Error importing students:', err);
+    console.error('❌ Error importing students:', err);
     res.status(500).json({ error: 'Server error during import' });
   }
 });
@@ -209,6 +229,20 @@ app.post('/send-emails', async (req, res) => {
   } catch (err) {
     console.error('Error sending emails:', err);
     res.status(500).json({ error: 'Failed to send emails' });
+  }
+});
+
+// POST /reset-database 
+app.post('/reset-database', async (req, res) => {
+  try {
+    // Сначала удаляем записи из зависимой таблицы (forms)
+    await pool.query('DELETE FROM forms');
+    await pool.query('DELETE FROM students');
+
+    res.json({ message: '🧹 Database cleared successfully' });
+  } catch (err) {
+    console.error('❌ Error resetting database:', err);
+    res.status(500).json({ error: 'Server error during reset' });
   }
 });
 

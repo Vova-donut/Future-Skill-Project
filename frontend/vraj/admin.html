@@ -15,7 +15,7 @@
     <!-- Upload Excel -->
     <div class="mb-4">
       <label for="excelFile" class="form-label">Upload New Student List (Excel):</label>
-      <input class="form-control" type="file" id="excelFile" accept=".xlsx, .xls">
+      <input class="form-control" type="file" id="excelFile" accept="CSV">
       <button class="btn btn-success mt-2" onclick="uploadExcel()">📤 Upload</button>
     </div>
 
@@ -48,6 +48,11 @@
         <tbody></tbody>
       </table>
     </div>
+
+    <div class="mb-4">
+      <button class="btn btn-danger" onclick="resetDatabase()">🗑 Reset Students & Forms</button>
+    </div>
+
   </div>
 
   <script>
@@ -58,7 +63,7 @@
       if (!file) return alert('Please select a file.');
 
       const formData = new FormData();
-      formData.append('excel', file);
+      formData.append('file', file);
 
       try {
         const res = await fetch('/import-students', {
@@ -132,6 +137,26 @@
         }
       } catch (err) {
         alert('🚨 Server error during email sending');
+        console.error(err);
+      }
+    }
+  </script>
+
+  <script>
+    // 👀 Deleting data table 
+    async function resetDatabase() {
+      const confirmed = confirm("⚠️ Are you sure? This will delete ALL students and forms.");
+      if (!confirmed) return;
+
+      try {
+        const res = await fetch('/reset-database', {
+          method: 'POST'
+        });
+
+        const result = await res.json();
+        alert(result.message || '✅ Reset done');
+      } catch (err) {
+        alert('❌ Server error during reset');
         console.error(err);
       }
     }
