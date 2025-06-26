@@ -23,12 +23,10 @@ async function sendEmails() {
         <p>Hi ${student.full_name},</p>
         <p>You're invited to register for graduation. Use the link below:</p>
         <p>
-          <a href="http://localhost:3000/muskan/index.html?student_id=${student.student_id}">
+          <a href="http://172.20.10.7:3000/vova/student-form.html?student_id=${student.student_id}">
             Complete Your Graduation Form
           </a>
-        </p>
-        <p><strong>Your login:</strong> ${student.student_id}<br>
-        <strong>Your password:</strong> ${student.password}</p>
+      
         <p>— Future Skills Team</p>
       `
     };
@@ -45,5 +43,6 @@ async function sendEmails() {
 }
 
 module.exports = sendEmails;
+
 
 

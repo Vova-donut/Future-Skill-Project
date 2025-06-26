@@ -3,37 +3,61 @@
 
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin Panel - Future Skills</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 
-<body class="p-5 bg-light">
-
-  <div class="container bg-white p-4 rounded shadow">
-    <h2 class="mb-4 text-center text-primary">🎓 Admin Panel</h2>
+<body class="body-admin">
+  <div class="panel-container">
+    <img src="public/logo.png" alt="FutureSkills Logo" class="logo">
+    <h2>Admin Panel</h2>
 
     <!-- Upload Excel -->
     <div class="mb-4">
-      <label for="excelFile" class="form-label">Upload New Student List (Excel):</label>
+      <label for="excelFile" class="form-label">Upload New Student List (Excel)</label>
       <input class="form-control" type="file" id="excelFile" accept="CSV">
-      <button class="btn btn-success mt-2" onclick="uploadExcel()">📤 Upload</button>
+      <button class="btn btn-primary mt-2" onclick="uploadExcel()">📤 Upload</button>
     </div>
 
     <!-- Send Emails -->
     <div class="mb-4">
-      <button class="btn btn-warning mt-3" onclick="sendEmails()">📧 Send Emails to Students</button>
+      <button class="btn btn-warning w-100" onclick="sendEmails()">📧 Send Emails to Students</button>
     </div>
 
     <!-- Export CSV -->
     <div class="mb-4">
-      <button class="btn btn-primary" onclick="downloadCSV()">📥 Export All Responses</button>
+      <button class="btn btn-primary w-100" onclick="downloadCSV()">📥 Export All Responses</button>
+    </div>
+
+    <!-- Table of Student status -->
+    <div class="section-title">Student Status</div>
+    <div class="table-responsive">
+      <table class="table table-bordered mt-3" id="statusTable">
+        <thead>
+          <tr>
+            <th>Student ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Faculty</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="mb-4">
+      <button class="btn btn-danger w-100" onclick="remindIncomplete()">🔁 Remind Incompleted</button>
     </div>
 
     <!-- Table of Responses -->
-    <h5 class="text-secondary">Submitted Responses:</h5>
+    <div class="section-title">Submitted Responses</div>
     <div class="table-responsive">
-      <table class="table table-bordered table-striped mt-3" id="responseTable">
-        <thead class="table-dark">
+      <table class="table table-bordered mt-3" id="responseTable">
+        <thead>
           <tr>
             <th>Student ID</th>
             <th>Name</th>
@@ -50,10 +74,15 @@
     </div>
 
     <div class="mb-4">
-      <button class="btn btn-danger" onclick="resetDatabase()">🗑 Reset Students & Forms</button>
+      <button class="btn btn-danger w-100" onclick="resetDatabase()">🗑 Reset Students & Forms</button>
     </div>
-
   </div>
+
+
+
+
+
+
 
   <script>
     // 📥 Upload Excel file
@@ -124,6 +153,10 @@
   <script>
     // Send emails
     async function sendEmails() {
+
+      const confirmed = confirm("⚠️ Are you sure? This will send emails ALL students.");
+      if (!confirmed) return;
+
       try {
         const res = await fetch('/send-emails', {
           method: 'POST'
@@ -132,6 +165,28 @@
         const result = await res.json();
         if (res.ok) {
           alert('✅ Emails sent successfully!');
+        } else {
+          alert('❌ Failed: ' + result.error);
+        }
+      } catch (err) {
+        alert('🚨 Server error during email sending');
+        console.error(err);
+      }
+    }
+    // Remind Incompleted
+    async function remindIncomplete() {
+
+      const confirmed = confirm("⚠️ Are you sure? This will send reminders WHO haven’t filled the form.");
+      if (!confirmed) return;
+
+      try {
+        const res = await fetch('/remind-incomplete', {
+          method: 'POST'
+        });
+
+        const result = await res.json();
+        if (res.ok) {
+          alert('✅ Reminders sent to students who haven’t filled the form.');
         } else {
           alert('❌ Failed: ' + result.error);
         }
@@ -160,6 +215,23 @@
         console.error(err);
       }
     }
+    // Получить статус заполнения форм
+    fetch('/students-status')
+      .then(res => res.json())
+      .then(data => {
+        const tbody = document.querySelector('#statusTable tbody');
+        data.forEach(s => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+        <td>${s.student_id}</td>
+        <td>${s.full_name}</td>
+        <td>${s.email}</td>
+        <td>${s.faculty}</td>
+        <td>${s.status}</td>
+      `;
+          tbody.appendChild(row);
+        });
+      });
   </script>
 
 </body>

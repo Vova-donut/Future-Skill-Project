@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FutureSkills - Graduation Registration</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="body-form">
+  <div class="form-card">
+    <img src="public/logo.png" alt="FutureSkills Logo" class="logo" />
+    <h3 class="form-title mb-4">Graduation Registration</h3>
+    <form id="registrationForm">
+      <div class="mb-3">
+        <label for="student_id" class="form-label">Student ID</label>
+        <input type="text" class="form-control" id="student_id" readonly />
+      </div>
+      <div class="mb-3">
+        <label for="full_name" class="form-label">Full Name</label>
+        <input type="text" class="form-control" id="full_name" readonly />
+      </div>
+      <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
+        <input type="email" class="form-control" id="email" readonly />
+      </div>
+      <div class="mb-3">
+        <label for="faculty" class="form-label">Faculty</label>
+        <input type="text" class="form-control" id="faculty" readonly />
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Will you be attending?</label><br />
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="attending" id="attendingYes" value="Yes" />
+          <label class="form-check-label" for="attending">Yes</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="attending" id="attendingNo" value="No" />
+          <label class="form-check-label" for="attending">No</label>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label for="guests" class="form-label">Number of Guests</label>
+        <input type="number" class="form-control" id="guests" value="0" min="0" max="5" />
+      </div>
+      <div class="mb-4">
+        <label for="food_preference" class="form-label">Food Preference</label>
+        <select class="form-select" id="food_preference">
+          <option value="-">-------</option>
+          <option value="No preference">No preference</option>
+          <option value="Vegetarian">Vegetarian</option>
+          <option value="Vegan">Vegan</option>
+          <option value="Halal">Halal</option>
+          <option value="Gluten Free">Gluten Free</option>
+          <option value="Kosher">Kosher</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary w-100">Submit</button>
+    </form>
+  </div>
+
+
+
+  <script>
+    // Функция для получения ID из URL: ?student_id=1001
+    function getStudentIdFromURL() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('student_id');
+    }
+
+    // Когда страница загрузилась — вставить ID в скрытое поле
+    document.addEventListener('DOMContentLoaded', () => {
+      const studentId = getStudentIdFromURL();
+
+      if (studentId) {
+        document.getElementById('student_id').value = studentId;
+      } else {
+        alert("❌ Student ID not found in URL.");
+      }
+    });
+  </script>
+
+  <script>
+    document.getElementById('registrationForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const attending = document.querySelector('input[name="attending"]:checked')?.value;
+      const student_id = document.getElementById('student_id').value;
+      const guests = document.getElementById('guests').value;
+      const food_preference = document.getElementById('food_preference').value;
+
+      if (!attending) {
+        alert("⚠️ Please select if you are attending.");
+        return;
+      }
+
+      if (attending === "Yes") {
+
+        if (guests === '') {
+          alert("⚠️ Please enter number of guests.");
+          return;
+        }
+
+        if (food_preference === '') {
+          alert("⚠️ Please select your food preference.");
+          return;
+        }
+
+      }
+
+      try {
+        const res = await fetch('http://172.20.10.7:3000/submit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            student_id,
+            attending,
+            guests,
+            food_preference
+          })
+        });
+
+        const result = await res.json();
+
+        if (res.ok) {
+          alert('✅ Form submitted successfully!');
+        } else {
+          alert(result.error || '❌ Submission failed');
+        }
+
+      } catch (error) {
+        console.error('🚨 Submit error:', error);
+        alert('Server error');
+      }
+    });
+  </script>
+
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const studentId = urlParams.get('student_id');
+
+    if (!studentId) {
+      alert("⛔️ student_id не указан в ссылке");
+      throw new Error("Нет student_id");
+    }
+
+    // Получаем данные студента и его форму
+    fetch(`/form-data?student_id=${studentId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (!data.student) {
+          alert("⛔️ Студент не найден");
+          return;
+        }
+
+        // Заполняем поля
+        document.getElementById('student_id').value = studentId;
+        document.getElementById('full_name').value = data.student.full_name;
+        document.getElementById('email').value = data.student.email;
+        document.getElementById('faculty').value = data.student.faculty;
+
+
+        // Если форма уже была заполнена — вставляем значения
+        if (data.form) {
+          const attendingValue = data.form.attending;
+          const attendingRadio = document.querySelector(`input[name="attending"][value="${attendingValue}"]`);
+          if (attendingRadio) attendingRadio.checked = true;
+          document.getElementById('guests').value = data.form.guests;
+          document.getElementById('food_preference').value = data.form.food_preference;
+        }
+
+      })
+      .catch(err => {
+        console.error('Ошибка загрузки:', err);
+      });
+  </script>
+
+</body>
+
+</html>

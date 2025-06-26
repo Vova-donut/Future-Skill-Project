@@ -12,8 +12,15 @@ const PORT = 3000;
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
 
+const { Parser } = require('json2csv');
+//const fs = require('fs');
+const path = require('path');
+
 // Чтобы Express умел читать JSON из тела запроса
 app.use(express.json());
+
+// Показываем все файлы из папки frontend
+app.use(express.static(path.join(__dirname, '../frontend')));
 
 // Получить все ответы студентов — /responses
 app.get('/responses', async (req, res) => {
@@ -74,41 +81,6 @@ app.post('/submit', async (req, res) => {
   }
 });
 
-
-app.post('/login', async (req, res) => {
-  const { student_id, password } = req.body;
-
-  // 👉 Временная проверка для админа
-  if (student_id === 'admin' && password === 'admin123') {
-    return res.json({ role: 'admin', message: 'Admin logged in successfully' });
-  }
-
-  // 👉 Поиск студента в базе
-  try {
-    const [rows] = await pool.query(
-      'SELECT * FROM students WHERE student_id = ? AND password = ?',
-      [student_id, password]
-    );
-
-    if (rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid student ID or password' });
-    }
-
-    res.json({ role: 'student', student: rows[0], message: 'Student logged in successfully' });
-
-  } catch (err) {
-    console.error('Login error:', err);
-    res.status(500).json({ error: 'Server error during login' });
-  }
-});
-
-
-const { Parser } = require('json2csv');
-const fs = require('fs');
-const path = require('path');
-
-// Показываем все файлы из папки frontend
-app.use(express.static(path.join(__dirname, '../frontend')));
 
 // Export all form responses as CSV
 app.get('/export', async (req, res) => {
@@ -245,6 +217,69 @@ app.post('/reset-database', async (req, res) => {
     res.status(500).json({ error: 'Server error during reset' });
   }
 });
+
+app.get('/form-data', async (req, res) => {
+  const student_id = req.query.student_id;
+
+  if (!student_id) {
+    return res.status(400).json({ error: 'Missing student_id' });
+  }
+
+  try {
+    const [[student]] = await pool.query(
+      'SELECT * FROM students WHERE student_id = ?', [student_id]
+    );
+
+    if (!student) return res.json({ student: null });
+
+    const [[form]] = await pool.query(
+      'SELECT * FROM forms WHERE student_id = ?', [student_id]
+    );
+
+    res.json({ student, form });
+  } catch (err) {
+    console.error('Ошибка в /form-data:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/students-status', async (req, res) => {
+  try {
+    const [results] = await pool.query(`
+      SELECT 
+        s.student_id,
+        s.full_name,
+        s.email,
+        s.faculty,
+        CASE 
+          WHEN f.student_id IS NOT NULL THEN '✔️ Comleted'
+          ELSE '❌ Uncompleted'
+        END AS status
+      FROM students s
+      LEFT JOIN forms f ON s.student_id = f.student_id
+      ORDER BY status DESC, s.full_name
+    `);
+
+    res.json(results);
+  } catch (err) {
+    console.error('Ошибка в /students-status:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+const remindIncomplete = require('./email/remindIncomplete');
+
+// POST /remindIncomplete
+app.post('/remind-incomplete', async (req, res) => {
+  try {
+    await remindIncomplete();
+    res.json({ message: '✅ Reminder emails sent to students who have not filled the form.' });
+  } catch (err) {
+    console.error('[API /remind-incomplete] Failed:', err.message);
+    res.status(500).json({ error: 'Server failed to send reminder emails. Check logs.' });
+  }
+});
+
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
